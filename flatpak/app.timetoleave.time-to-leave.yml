@@ -1,0 +1,50 @@
+app-id: app.timetoleave.time-to-leave
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+
+base: org.electronjs.Electron2.BaseApp
+base-version: '23.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node20
+
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=pulseaudio
+  - --share=network
+
+command: run.sh
+
+modules:
+  - name: time-to-leave
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node20/bin
+      env:
+        XDG_CACHE_HOME: /run/build/time-to-leave/flatpak-node/cache
+        npm_config_cache: /run/build/time-to-leave/flatpak-node/npm-cache
+        npm_config_offline: 'true'
+    subdir: main
+    build-commands:
+      # Install npm dependencies
+      - npm install --offline
+      # Build the app; in this example the `dist` script
+      # in package.json runs electron-builder
+      - |
+        . ../flatpak-node/electron-builder-arch-args.sh
+        npm run dist -- $ELECTRON_BUILDER_ARCH_ARGS  --linux --dir
+      # Bundle app and dependencies
+      - cp -a dist/linux*unpacked /app/main
+      # Install app wrapper
+      - install -Dm755 -t /app/bin/ ../run.sh
+    sources:
+      - type: git
+        url: https://github.com/TTLApp/time-to-leave.git
+        tag: 3.0.0 
+        dest: main
+      - generated-sources.json
+      - type: script
+        dest-filename: run.sh
+        commands:
+          - zypak-wrapper.sh /app/main/time-to-leave "$@"
